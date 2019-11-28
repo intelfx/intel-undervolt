@@ -117,6 +117,30 @@ static int power_from_seconds(float seconds, int time_unit) {
 	}
 }
 
+void power_limit_print(struct power_domain_t *domain, uint64_t limit, uint64_t units)
+{
+	int power_unit = (int) (exp2f(units & 0xf) + 0.5f);
+	int time_unit = (int) (exp2f((units >> 16) & 0xf) + 0.5f);
+
+	int short_term = ((limit >> 32) & 0x7fff) / power_unit;
+	int long_term = (limit & 0x7fff) / power_unit;
+	bool short_term_enabled = !!((limit >> 47) & 1);
+	bool long_term_enabled = !!((limit >> 15) & 1);
+	bool locked = !!((limit >> 63) & 1);
+	float short_term_window = power_to_seconds(limit >> 48,
+		time_unit);
+	float long_term_window = power_to_seconds(limit >> 16,
+		time_unit);
+	printf("Short term %s power: %d W, %.03f s, %s, %s\n",
+		domain->name, short_term, short_term_window,
+		(short_term_enabled ? "enabled" : "disabled"),
+		(locked ? "LOCKED" : "unlocked"));
+	printf("Long term %s power: %d W, %.03f s, %s, %s\n",
+		domain->name, long_term, long_term_window,
+		(long_term_enabled ? "enabled" : "disabled"),
+		(locked ? "LOCKED" : "unlocked"));
+}
+
 bool power_limit(struct config_t * config, int index, bool * nl, bool write) {
 	bool nll = false;
 	struct power_limit_t * power = &config->power[index];
@@ -210,23 +234,11 @@ bool power_limit(struct config_t * config, int index, bool * nl, bool write) {
 				printf("Failed to write %s power values: %s\n",
 					domain->name, errstr);
 			} else if (nl) {
-				if ((msr_limit >> 63) & 0x1) {
-					printf("Warning: %s power limit is locked\n", domain->name);
-				}
-				int short_term = ((msr_limit >> 32) & 0x7fff) / power_unit;
-				int long_term = (msr_limit & 0x7fff) / power_unit;
-				bool short_term_enabled = !!((msr_limit >> 47) & 1);
-				bool long_term_enabled = !!((msr_limit >> 15) & 1);
-				float short_term_window = power_to_seconds(msr_limit >> 48,
-					time_unit);
-				float long_term_window = power_to_seconds(msr_limit >> 16,
-					time_unit);
-				printf("Short term %s power: %d W, %.03f s, %s\n",
-					domain->name, short_term, short_term_window,
-					(short_term_enabled ? "enabled" : "disabled"));
-				printf("Long term %s power: %d W, %.03f s, %s\n",
-					domain->name, long_term, long_term_window,
-					(long_term_enabled ? "enabled" : "disabled"));
+				printf("MSR:\n");
+				power_limit_print(domain, msr_limit, units);
+				NEW_LINE(nl, nll);
+				printf("MCHBAR:\n");
+				power_limit_print(domain, mem_limit, units);
 			}
 		}
 
