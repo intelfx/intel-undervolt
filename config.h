@@ -9,6 +9,7 @@
 #define MSR_ADDR_TEMPERATURE 0x1a2
 #define MSR_ADDR_UNITS 0x606
 #define MSR_ADDR_VOLTAGE 0x150
+#define MSR_ADDR_TDP_CONTROL 0x64B
 
 struct undervolt_t {
 	int index;
@@ -79,6 +80,7 @@ struct config_t {
 	struct array_t * hwp_hints;
 	int interval;
 	struct array_t * daemon_actions;
+	int ctdp_profile;
 };
 
 void free_config(struct config_t * config);

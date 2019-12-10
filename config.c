@@ -333,6 +333,7 @@ struct config_t * load_config(struct config_t * old_config, bool * nl) {
 	config->hwp_hints = NULL;
 	config->interval = -1;
 	config->daemon_actions = NULL;
+	config->ctdp_profile = -1;
 
 	int fd[2];
 	pipe(fd);
@@ -357,6 +358,7 @@ struct config_t * load_config(struct config_t * old_config, bool * nl) {
 			"hwphint() { pz hwphint \"$1\" \"$2\" \"$3\" \"$4\"; };"
 			"interval() { pz interval \"$1\"; };"
 			"daemon() { pz daemon \"$1\"; };"
+			"ctdp() { pz ctdp \"$1\"; };"
 			". " SYSCONFDIR "/intel-undervolt.conf",
 			"sh", fdarg, NULL);
 		exit(1);
@@ -569,6 +571,15 @@ struct config_t * load_config(struct config_t * old_config, bool * nl) {
 					iuv_print_break("Invalid interval: %s\n", line);
 				}
 				config->interval = interval;
+			} else if (!strcmp(line, "ctdp")) {
+				int ctdp_profile;
+				iuv_read_line_error();
+				tmp = NULL;
+				ctdp_profile = (int) strtoul(line, &tmp, 10);
+				if (!line[0] || (tmp && tmp[0]) || ctdp_profile < 0) {
+					iuv_print_break("Invalid cTDP profile: %s\n", line);
+				}
+				config->ctdp_profile = ctdp_profile;
 			} else if (!strcmp(line, "daemon")) {
 				struct daemon_action_t * daemon_action;
 				bool once = false;

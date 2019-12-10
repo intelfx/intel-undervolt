@@ -155,6 +155,7 @@ bool power_limit(struct config_t * config, int index, bool * nl, bool write) {
 		uint64_t msr_limit;
 		uint64_t mem_limit;
 		uint64_t units;
+		uint64_t ctdp_profile;
 		if (domain->msr_addr == 0 || rd(config, domain->msr_addr, msr_limit)) {
 			if (domain->mem_addr == 0 ||
 				safe_rw(mem, &mem_limit, false)) {
@@ -176,6 +177,12 @@ bool power_limit(struct config_t * config, int index, bool * nl, bool write) {
 			}
 			if (domain->msr_addr == 0 && domain->mem_addr == 0) {
 				errstr = "No method available";
+			}
+		}
+
+		if (!errstr) {
+			if (!rd(config, MSR_ADDR_TDP_CONTROL, ctdp_profile)) {
+				errstr = strerror(errno);
 			}
 		}
 
@@ -224,6 +231,15 @@ bool power_limit(struct config_t * config, int index, bool * nl, bool write) {
 				} else {
 					errstr = strerror(errno);
 				}
+
+				if (config->ctdp_profile >= 0) {
+					uint64_t value = (uint64_t)config->ctdp_profile;
+					if (wr(config, MSR_ADDR_TDP_CONTROL, value)) {
+						ctdp_profile = value;
+					} else {
+						errstr = strerror(errno);
+					}
+				}
 			} else if (msr_limit != mem_limit) {
 				NEW_LINE(nl, nll);
 				printf("Warning: MSR and memory values are not equal\n");
@@ -239,6 +255,7 @@ bool power_limit(struct config_t * config, int index, bool * nl, bool write) {
 				NEW_LINE(nl, nll);
 				printf("MCHBAR:\n");
 				power_limit_print(domain, mem_limit, units);
+				printf("cTDP: %u", (unsigned)ctdp_profile);
 			}
 		}
 
